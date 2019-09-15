@@ -16,9 +16,9 @@ uint64_t GetTimeStamp() {
 }
 
 int main(int argc, char *argv[]) {
-    struct rlimit limit;
-    getrlimit(RLIMIT_STACK, &limit);
-    printf ("\nStack Limit = %ld and %ld max\n", limit.rlim_cur, limit.rlim_max);
+    //struct rlimit limit;
+    //getrlimit(RLIMIT_STACK, &limit);
+    //printf ("\nStack Limit = %ld and %ld max\n", limit.rlim_cur, limit.rlim_max);
     long int C;    /* capacity of backpack */
     int n;    /* number of items */
     int i;    /* loop counter */
@@ -62,22 +62,19 @@ int main(int argc, char *argv[]) {
 #include <math.h>
 #include <stdlib.h>
 
-long int max(long int x, long int y) {
-   return (x > y) ? x : y;
-}
-
 void toBinary(unsigned long long permutation, unsigned char used[], int n)
 {
     int i = 0;
-    unsigned long long highBit = 1 << (n - 1);
+    unsigned long long highBit = (unsigned long long)1 << (n  -1 ) ;
     while(highBit)
     {
-        unsigned char k = (permutation & highBit ? 1 : 0);
+        unsigned long long k = (permutation & highBit ? 1 : 0);
         highBit >>= 1;
         used[i] = k;
         i++;
     }
 }
+
 
 void print_arr(unsigned char arr[], int n)
 {
@@ -113,29 +110,30 @@ long int knapSack(long int C, long int w[], long int v[], int n) {
         MPI_Bcast(val, n, MPI_LONG, 0 , MPI_COMM_WORLD);
     }
 
-    unsigned long long permutations = pow(2.0, n);
+    unsigned long long permutations = (unsigned long long)1 << n;
 
     unsigned long long chunkSize = permutations / size;
     unsigned long long lowerBound = rank * chunkSize; 
-    unsigned long long upperBound = (lowerBound + chunkSize) - 1;
+    unsigned long long upperBound = (rank + 1) * chunkSize;
     
     unsigned long overallMaxValue = 0;
     unsigned long maxValue = 0;
                
-    unsigned char used[n];
-    unsigned char finalUsedState[n];
+    unsigned char used[n + 1];
+    unsigned char finalUsedState[n +1];
 
         
     bzero(used, sizeof (used));
     bzero(finalUsedState, sizeof(finalUsedState));
+
     
-    toBinary(lowerBound, used, n);
-    if(rank == 0){
-    print_arr(used, n);
+    toBinary(lowerBound, used, n + 1) ;
+    if(rank == 1){
+        print_arr(used, n);
     }
     toBinary(upperBound, finalUsedState, n);
     if(rank == 1){
-print_arr(finalUsedState, n);
+        print_arr(finalUsedState, n);
     }
     
     long int weight = 0;
@@ -146,7 +144,8 @@ print_arr(finalUsedState, n);
 
         
         done = 1;
-        for (int i = 0; i < n ; i++){
+        for (int i = 0; i <= n ; i++){
+            lowerBound++;
             if(!used[i]){
                 used[i] = 1;
                 weight += wt[i];
@@ -162,9 +161,11 @@ print_arr(finalUsedState, n);
         if(weight <= C && value > maxValue){
             maxValue = value;
         }
-        if(memcmp(used, finalUsedState, n) == 0){
+        if(lowerBound>upperBound){
+            printf("Max Value %d\n", maxValue);
             break;
         }
+        
     }
     
     MPI_Barrier(MPI_COMM_WORLD);
