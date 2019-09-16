@@ -62,26 +62,21 @@ int main(int argc, char *argv[]) {
 #include <math.h>
 #include <stdlib.h>
 
-void toBinary(unsigned long long permutation, unsigned char used[], int n)
-{
-    int i = 0;
-    unsigned long long highBit = (unsigned long long)1 << (n  -1 ) ;
-    while(highBit)
-    {
-        unsigned long long k = (permutation & highBit ? 1 : 0);
-        highBit >>= 1;
-        used[i] = k;
-        i++;
+void toBinary(unsigned long long permutation, unsigned char used[], int n, int rank)
+{   
+    for (int i = 0; i < n; i++) {
+        unsigned char bit = (((unsigned long long)1 << i) & permutation) >> i;
+        used[i] = bit;
     }
 }
 
 
-void print_arr(unsigned char arr[], int n)
+void print_arr(unsigned char arr[], int n, int rank)
 {
     printf("=====================================\n");
     for (int i = 0; i < n; i++)
     {
-        printf("%ld ", arr[i]);
+        printf("%u ", arr[i]);
     }
 
     printf("\n");
@@ -110,42 +105,40 @@ long int knapSack(long int C, long int w[], long int v[], int n) {
         MPI_Bcast(val, n, MPI_LONG, 0 , MPI_COMM_WORLD);
     }
 
-    unsigned long long permutations = (unsigned long long)1 << n;
+    unsigned long long permutations = (((unsigned long long)1) << (unsigned long long)n) - 1 ;
 
     unsigned long long chunkSize = permutations / size;
     unsigned long long lowerBound = rank * chunkSize; 
-    unsigned long long upperBound = (rank + 1) * chunkSize;
-    
-    unsigned long overallMaxValue = 0;
-    unsigned long maxValue = 0;
-               
-    unsigned char used[n + 1];
-    unsigned char finalUsedState[n +1];
+    unsigned long long upperBound = (rank + 1) * chunkSize;             
+    unsigned char used[n];
+    unsigned char finalUsedState[n];
 
         
     bzero(used, sizeof (used));
     bzero(finalUsedState, sizeof(finalUsedState));
 
     
-    toBinary(lowerBound, used, n + 1) ;
+    toBinary(lowerBound, used, n,rank) ;
     if(rank == 1){
-        print_arr(used, n);
+        //print_arr(used, n, rank);
     }
-    toBinary(upperBound, finalUsedState, n);
+    //toBinary(upperBound, finalUsedState, N,rank);
     if(rank == 1){
-        print_arr(finalUsedState, n);
+      //  print_arr(finalUsedState, n, rank);
     }
+    
     
     long int weight = 0;
     long int value = 0;
+    unsigned long maxValue = 0;
+    unsigned long overallMaxValue = 0;
     int done = 0;
     printf("rank:%d, size: %d, lowerbound:%llu, upperbound: %llu\n",rank, size, lowerBound, upperBound );
-    while(!done){
-
+    if (rank ==1 )print_arr(used,n,rank);
+    while(!done){   
         
         done = 1;
-        for (int i = 0; i <= n ; i++){
-            lowerBound++;
+        for (int i = 0 ; i < n ; i++){
             if(!used[i]){
                 used[i] = 1;
                 weight += wt[i];
@@ -155,14 +148,18 @@ long int knapSack(long int C, long int w[], long int v[], int n) {
             } else {
                 used[i] = 0;
                 weight -= wt[i];
-                value -= val[i];
+                value -= val[i];         
             }
         }
-        if(weight <= C && value > maxValue){
+        if(weight <= C && value > maxValue && value > 0){
+            if(rank == 1){
+                printf("Bound:%llu,    Value=%d \n",lowerBound, value);
+                print_arr(used,n,rank) ;
+            }
             maxValue = value;
         }
-        if(lowerBound>upperBound){
-            printf("Max Value %d\n", maxValue);
+        lowerBound++;
+        if(lowerBound > upperBound){
             break;
         }
         
