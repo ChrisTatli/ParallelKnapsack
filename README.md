@@ -1,1 +1,1 @@
-# COMP90015-projib
+Parallel implementation of knapsack
